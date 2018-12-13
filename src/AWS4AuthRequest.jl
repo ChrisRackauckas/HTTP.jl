@@ -60,6 +60,7 @@ function sign_aws4!(method::String,
                     aws_access_key_id::String=ENV["AWS_ACCESS_KEY_ID"],
                     aws_secret_access_key::String=ENV["AWS_SECRET_ACCESS_KEY"],
                     aws_session_token::String=get(ENV, "AWS_SESSION_TOKEN", ""),
+                    include_token_in_sig=true,
                     include_md5=true,
                     include_sha256=true,
                     kw...)
@@ -98,7 +99,8 @@ function sign_aws4!(method::String,
         # https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
         setkv(headers, "x-amz-content-sha256", content_hash)
     end
-    if aws_session_token != ""
+    # Some services don't want the token as part of the signature
+    if aws_session_token != "" && include_token_in_sig
         setkv(headers, "x-amz-security-token", aws_session_token)
     end
 
@@ -153,6 +155,11 @@ function sign_aws4!(method::String,
         "SignedHeaders=$signed_headers, ",
         "Signature=$signature"
     ))
+
+    # Include the session token in the headers if we didn't do it before signing
+    if aws_session_token != "" && !include_token_in_sig
+        setkv(headers, "x-amz-security-token", aws_session_token)
+    end
 end
 
 using IniFile
